@@ -11,11 +11,11 @@ public class RoFIModule : MonoBehaviour
 
     public void Update()
     {
-        float shoe1Velocity = Input.GetAxis("Vertical") * maxVelocity;
-        float shoe2Velocity = Input.GetAxis("Horizontal") * maxVelocity;
-        float middleVelocity = Input.GetAxis("Middle") * maxVelocity;
+        float shoe1Velocity = Input.GetAxis( "Vertical" ) * maxVelocity;
+        float shoe2Velocity = Input.GetAxis( "Horizontal" ) * maxVelocity;
+        float middleVelocity = Input.GetAxis( "Middle" ) * maxVelocity;
 
-        // Debug.Log("Velocities:\nshoe1: " + shoe1Velocity + ", shoe2: " + shoe2Velocity + ", middle: " + middleVelocity);
+        // Debug.Log( "Velocities:\nshoe1: " + shoe1Velocity + ", shoe2: " + shoe2Velocity + ", middle: " + middleVelocity );
 
         JointMotor shoe1Motor = shoe1Joint.motor;
         shoe1Motor.targetVelocity = shoe1Velocity;

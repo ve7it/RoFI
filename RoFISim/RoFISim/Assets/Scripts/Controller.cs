@@ -25,7 +25,8 @@ public class Controller : MonoBehaviour
     void Update()
     {
         Tuple< int, List< byte > > item;
-        if ( received.TryDequeue( out item ) ) {
+        if ( received.TryDequeue( out item ) )
+        {
             // TODO
             send.Enqueue( item );
         }
