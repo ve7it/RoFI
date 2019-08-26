@@ -1,0 +1,47 @@
+syntax = "proto3";
+package rofi;
+
+enum CommandType
+{
+	NO_COMMAND = 0;
+
+	JOINT_MAX = 1;
+	JOINT_MIN = 2;
+	JOINT_MAX_SPEED = 3;
+	JOINT_MAX_TORQUE = 4;
+	JOINT_GET_POSITION = 5;
+	JOINT_GET_SPEED = 6;
+	JOINT_SET_TORQUE = 7;
+	JOINT_SET_SPEED = 8;
+	JOINT_SET_POSITION = 9;
+	JOINT_ON_POSITION = 10;
+	JOINT_POSITION_REACHED = 11;
+
+	DOCK_STATE = 12;
+	DOCK_CONNECT = 13;
+	DOCK_WAIT_FOR_CONNECTION = 14;
+	DOCK_WAIT_FOR_DISCONNECTION = 15;
+	DOCK_ON_CONNECTION = 16;
+	DOCK_ON_DISCONNECTION = 17;
+	DOCK_GET_MUTUAL_ORIENTATION = 18;
+	DOCK_DISCONNECT = 19;
+	DOCK_LINE_CONNECT = 20;
+	DOCK_LINE_DISCONNECT = 21;
+	DOCK_LINE_CURRENT = 22;
+	DOCK_LINE_VOLTAGE = 23;
+
+	MODULE_GET_ID = 24;
+	MODULE_GET_TYPE = 25;
+	MODULE_GET_SHAPE = 26;
+}
+
+message Parameters { // All possible parameters (default values are not serialized)
+	int32 jointId = 1;
+	int32 dockId = 2;
+	float float1 = 5;
+}
+
+message Command {
+	CommandType type = 1;
+	Parameters params = 2; // Could be changed to byte[]
+}

@@ -6,29 +6,71 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
+using pb = global::Google.Protobuf;
 
 using MessageQueue = System.Collections.Concurrent.ConcurrentQueue<System.Tuple<int, System.Collections.Generic.List<byte>>>;
 
 class ClientInfo
 {
     static private int nextId = 1;
-    public int clientId{ get; private set; }
+    public int clientId{ get; private set; } // zero means no client assigned
     public TcpClient tcpClient;
     public NetworkStream stream;
 
     public List< byte > receivedMessage = new List< byte >();
+    private int _sizeOfMsgLength = 0;
+    public int SizeOfMsgLength
+    {
+        get
+        {
+            if ( _sizeOfMsgLength > 0 )
+            {
+                return _sizeOfMsgLength;
+            }
+
+            for ( int i = 0; i < receivedMessage.Count; i++ )
+            {
+                if ( ( receivedMessage[i] >> 7 ) == 0 )
+                {
+                    _sizeOfMsgLength = i + 1;
+                    return _sizeOfMsgLength;
+                }
+            }
+
+            return _sizeOfMsgLength;
+        }
+    }
 
     public ClientInfo()
     {
         clientId = nextId++;
     }
 
+    private int GetMsgLength()
+    {
+        if ( SizeOfMsgLength == 0 )
+        {
+            return 0;
+        }
+
+        byte[] lengthBytes = new byte[ SizeOfMsgLength ];
+        receivedMessage.CopyTo( 0, lengthBytes, 0, SizeOfMsgLength );
+        return CodedInputStream( lengthBytes ).ReadLength();
+    }
+
     public Tuple< int, List< byte > > getMessage()
     {
-        receivedMessage.TrimExcess();
-        var ret = Tuple.Create( clientId, receivedMessage );
-        receivedMessage = new List< byte >();
-        return ret;
+        int length = GetMsgLength();
+
+        List< byte > newMsg = new List< byte >( receivedMessage.GetRange( SizeOfMsgLength, length ) );
+        receivedMessage.RemoveRange( 0, SizeOfMsgLength + length );
+
+        return Tuple.Create( clientId, newMsg );
+    }
+
+    public bool IsCompleteMessage()
+    {
+        return SizeOfMsgLength > 0 && receivedMessage.Count >= SizeOfMsgLength + GetMsgLength();
     }
 }
 
@@ -133,37 +175,50 @@ class TCPServer
 
         clientInfo.receivedMessage.AddRange( buffer );
 
-        if ( IsCompleteMessage( clientInfo.receivedMessage ) )
+        if ( clientInfo.IsCompleteMessage() )
         {
             receivedQueue.Enqueue( clientInfo.getMessage() );
         }
     }
 
-    public bool IsCompleteMessage( List< byte > message )
+    private NetworkStream GetStreamFromId( int clientId )
     {
-        // TODO
-        return true;
+        NetworkStream stream = null;
+        for (int i = 0; i < clients.Count; i++)
+        {
+            if (clientId == clients[i].clientId)
+            {
+                stream = clients[i].stream;
+            }
+        }
+        return stream;
+    }
+
+    private byte[] PrepareMessage( List< byte > message )
+    {
+        int msgSize = pb::CodedOutputStream.ComputeLengthSize( message.Count ) + message.Count;
+
+        byte[] preparedMsg = new byte[ msgSize ];
+        CodedOutputStream msgStream = new CodedOutputStream( preparedMsg );
+
+        msgStream.WriteLength( message.Count );
+        message.CopyTo( preparedMsg, preparedMsg.Length - message.Count );
+
+        return preparedMsg;
     }
 
     private void SendMessageToClient( int clientId, List< byte > sendMsg )
     {
-        NetworkStream stream = null;
-        for ( int i = 0; i < clients.Count; i++ )
-        {
-            if ( clientId == clients[ i ].clientId )
-            {
-                stream = clients[ i ].stream;
-            }
-        }
+        NetworkStream stream = GetStreamFromId( clientId );
         if ( stream == null )
         {
             ServerLog( "No client with given id: " + clientId );
             return;
         }
 
-        byte[] msgOut = sendMsg.ToArray();
-        ServerLog( "Sending message: \"" + toASCII( msgOut ) + "\"" +
-                " (" + toHex( msgOut ) + ")" );
+        byte[] msgOut = PrepareMessage( sendMsg );
+
+        ServerLog( "Sending message: \"" + toHex( msgOut ) + "\"" );
         stream.WriteAsync( msgOut, 0, msgOut.Length );
     }
 

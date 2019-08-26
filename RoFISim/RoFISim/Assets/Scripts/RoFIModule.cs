@@ -5,28 +5,35 @@ using UnityEngine;
 public class RoFIModule : MonoBehaviour
 {
     public const float maxVelocity = 360f;
-    public HingeJoint shoe1Joint;
-    public HingeJoint shoe2Joint;
-    public HingeJoint middleJoint;
+    public List< HingeJoint > hingeJoints;
+    public List< string > inputAxies = { "Vertical", "Horizontal", "Middle" };
 
-    public void Update()
+    private List< Rofi.Joint > joints = new List< Rofi.Joint >();
+    private List< Rofi.Dock > docks = new List< Rofi.Dock >();
+    private Rofi.Module self = new Rofi.Module();
+
+    void Start()
     {
-        float shoe1Velocity = Input.GetAxis( "Vertical" ) * maxVelocity;
-        float shoe2Velocity = Input.GetAxis( "Horizontal" ) * maxVelocity;
-        float middleVelocity = Input.GetAxis( "Middle" ) * maxVelocity;
+        foreach ( HingeJoint hinge in hingeJoints )
+        {
+            joints.Add( new Rofi.Joint( hinge ) );
+        }
 
-        // Debug.Log( "Velocities:\nshoe1: " + shoe1Velocity + ", shoe2: " + shoe2Velocity + ", middle: " + middleVelocity );
 
-        JointMotor shoe1Motor = shoe1Joint.motor;
-        shoe1Motor.targetVelocity = shoe1Velocity;
-        shoe1Joint.motor = shoe1Motor;
+        if ( hingeJoints.Count != inputAxies.Count ) // TODO remove
+        {
+            Debug.Log( "Got " + hingeJoints.Count + " joints, but " + inputAxies.Count + " input axies." );
+        }
+    }
 
-        JointMotor shoe2Motor = shoe2Joint.motor;
-        shoe2Motor.targetVelocity = shoe2Velocity;
-        shoe2Joint.motor = shoe2Motor;
-
-        JointMotor middleMotor = middleJoint.motor;
-        middleMotor.targetVelocity = middleVelocity;
-        middleJoint.motor = middleMotor;
+    void Update()
+    {
+        for ( int i = 0; i < hingeJoints.Count; i++ ) // TODO remove
+        {
+            float velocity = Input.GetAxis( inputAxies[ i ] ) * maxVelocity;
+            JointMotor motor = hingeJoints[ i ].motor;
+            motor.targetVelocity = velocity;
+            hingeJoints[ i ].motor = motor;
+        }
     }
 }
