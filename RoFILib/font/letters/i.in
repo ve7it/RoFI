@@ -1,0 +1,42 @@
+M 0 0 0 0
+M 1 0 0 0
+M 2 0 0 0
+M 3 0 0 0
+M 4 0 0 0
+M 5 0 0 0
+M 6 0 0 0
+M 7 90 0 0
+M 8 0 0 0
+M 9 0 0 0
+M 10 0 0 0
+M 11 0 0 0
+M 12 0 0 0
+M 13 0 0 0
+M 14 0 0 0
+M 15 0 0 0
+M 16 0 0 0
+M 17 0 0 0
+M 18 0 0 0
+M 19 0 0 0
+M 20 0 0 0
+E 0 B -Z S -Z A 1
+E 1 B -Z S -Z A 2
+E 2 B -Z S -Z A 3
+E 3 B -Z S -Z A 4
+E 4 B -Z S -Z A 5
+E 5 B -Z S -Z A 6
+E 0 A +X S -X A 7
+E 7 B -Z S -Z A 8
+E 8 B -Z S -Z A 9
+E 9 B -Z S -Z A 10
+E 10 B -Z S -Z A 11
+E 12 B -Z S -Z A 13
+E 6 B -X S +X B 13
+E 7 A +X S -X A 14
+E 14 B -Z S -Z A 15
+E 15 B -Z S -Z A 16
+E 16 B -Z S -Z A 17
+E 17 B -Z S -Z A 18
+E 18 B -Z S -Z A 19
+E 19 B -Z S -Z A 20
+E 13 B -X S +X B 20
