@@ -728,10 +728,35 @@ public:
 //        }
     }
 
+    void generateTruncatedActions(std::vector<Action>& res, double prob, unsigned step) const
+    {
+        std::vector<Action::Rotate> rotations;
+        generateTruncatedRotations(rotations, prob, step);
+        std::vector<Action::Reconnect> reconnections;
+        generateTruncatedReconnect(reconnections, prob);
+
+
+        for (auto& rotation : rotations)
+        {
+            res.emplace_back({rotation}, {});
+        }
+
+        for (auto& reconnection : reconnections)
+        {
+            res.emplace_back({}, {reconnection});
+        }
+    }
+
     void generateReconnect(std::vector<Action::Reconnect>& res) const
     {
         generateConnections(res);
         generateDisconnections(res);
+    }
+
+    void generateTruncatedReconnect(std::vector<Action::Reconnect>& res, double prob) const
+    {
+        generateTruncatedConnections(res, prob);
+        generateTruncatedDisconnections(res, prob);
     }
 
     void generateConnections(std::vector<Action::Reconnect>& res) const
@@ -744,6 +769,42 @@ public:
                     continue;
 
                 Edge edge(id1, A, XPlus, 0, XPlus, A, id2);
+                auto edgeOpt = nextEdge(edge);
+
+                while (edgeOpt.has_value())
+                {
+                    Vector center1 = center(ms1[edge.side1()]);
+                    Vector center2 = center(ms2[edge.side2()]);
+                    if (distance(center1, center2) != 1)
+                    {
+                        edge = edgeOpt.value();
+                        edgeOpt = nextEdge(edge);
+                        continue;
+                    }
+
+                    const Matrix& matrix = ms2[edge.side2()];
+                    if (equals(matrix, computeConnectedMatrix(edge)) && !findEdge(edge))
+                    {
+                        res.emplace_back(true, edge);
+                    }
+                    edge = edgeOpt.value();
+                    edgeOpt = nextEdge(edge);
+                }
+            }
+        }
+    }
+
+    void generateTruncatedConnections(std::vector<Action::Reconnect>& res, double prob) const
+    {
+        std::uniform_int_distribution<> dis(1,999);
+        for (auto& [id1, ms1] : matrices)
+        {
+            for (auto&[id2, ms2] : matrices)
+            {
+                if (id1 >= id2 || dis()/1000.0 > prob)
+                    continue;
+
+                Edge edge(id1, A, Xp, 0, Xp, A, id2);
                 auto edgeOpt = nextEdge(edge);
 
                 while (edgeOpt.has_value())
@@ -784,6 +845,22 @@ public:
         }
     }
 
+    void generateTruncatedRotations(std::vector<Action::Rotate>& res, double prob, unsigned step) const
+    {
+        std::uniform_int_distribution<> dis(1,999);
+        for (auto [id, mod] : modules)
+        {
+            for (int d : {-step, step})
+            {
+                for (Joint joint : {Alpha, Beta, Gamma})
+                {
+                    if (mod.rotateJoint(joint, d) && dis()/1000.0 < prob)
+                        res.emplace_back(id, joint, d);
+                }
+            }
+        }
+    }
+
     void generateDisconnections(std::vector<Action::Reconnect>& res) const
     {
         for (auto& [id, set] : edges)
@@ -801,10 +878,45 @@ public:
         }
     }
 
+    void generateTruncatedDisconnections(std::vector<Action::Reconnect>& res, double prob) const
+    {
+        std::uniform_int_distribution<> dis(1,999);
+        for (auto& [id, set] : edges)
+        {
+            for (const std::optional<Edge>& edgeOpt : set)
+            {
+                if (!edgeOpt.has_value() || dis()/1000.0 > prob)
+                    continue;
+                const Edge& edge = edgeOpt.value();
+                if (edge.id1() < edge.id2())
+                {
+                    res.emplace_back(false, edge);
+                }
+            }
+        }
+    }
+
     void next(std::vector<Configuration>& res, unsigned step, unsigned bound = 1) const
     {
         std::vector<Action> actions;
         generateActions(actions, step, bound);
+        //auto actions = generateActions(step, bound);
+        for (auto& action : actions)
+        {
+            auto cfgOpt = executeIfValid(action);
+            if (cfgOpt.has_value())
+            {
+                res.push_back(cfgOpt.value());
+            }
+        }
+    }
+
+    void truncatedNext(std::vector<Configuration>& res, double prob, unsigned step) const
+    {
+        // Keep next with probability prob
+        
+        std::vector<Action> actions;
+        generateTruncatedActions(actions, prob, step);
         //auto actions = generateActions(step, bound);
         for (auto& action : actions)
         {

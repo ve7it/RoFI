@@ -95,7 +95,7 @@ private:
 };
 
 inline double eval(const Configuration& configuration) {
-    SpaceGrid grid = SpaceGrid(configuration);
+    SpaceGrid grid(configuration);
     return grid.getDist();
 }
 
@@ -159,6 +159,8 @@ inline std::vector<Configuration> createPath(ConfigEdges& edges, const Configura
 
 inline std::vector<Configuration> SnakeStar(const Configuration& init, AlgorithmStat* stat = nullptr, int limit = -1)
 {
+    srand(time(NULL));
+
     unsigned step = 90;
     unsigned bound = 1;
     
@@ -181,6 +183,10 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
     std::priority_queue<EvalPair, std::vector<EvalPair>, EvalCompare> queue;
 
     const Configuration* pointer = pool.insert(init);
+    const Configuration* bestConfig = pointer;
+    unsigned bestScore = startDist;
+    double prob = 0.5; //TODO play with E[X]
+
     initDist[pointer] = 0;
     goalDist[pointer] = startDist;
     pred[pointer] = pointer;
@@ -198,7 +204,7 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
         queue.pop();
 
         std::vector<Configuration> nextCfgs;
-        current->next(nextCfgs, step, bound);
+        current->truncatedNext(nextCfgs, prob, step, bound);
 
         for (const auto& next : nextCfgs)
         {
@@ -216,6 +222,11 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
             else
             {
                 pointerNext = pool.get(next);
+            }
+
+            if (currEval < bestScore) {
+                bestScore = currEval;
+                bestConfig = pointerNext;
             }
 
             if ((currDist + 1 < initDist[pointerNext]) || update)
@@ -240,17 +251,14 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
             }
         }
     }
-    if (!queue.empty()){
-        auto [id, curr] = queue.top();
-        //todo: std::vector<Configuration> res{curr};
-        return res;
-    }
-
+    std::cout << "Just returning my best!" << std::endl;
+    auto path = createPath(pred, bestConfig);
     if (stat != nullptr)
     {
-        stat->pathLength = 0;
+        stat->pathLength = path.size();
         stat->queueSize = maxQSize;
         stat->seenCfgs = pool.size();
     }
-    return {};
+
+    return path;
 }
