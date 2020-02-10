@@ -162,8 +162,7 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
     srand(time(NULL));
 
     unsigned step = 90;
-    unsigned bound = 1;
-    
+
     ConfigPred pred;
     ConfigPool pool;
 
@@ -185,7 +184,6 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
     const Configuration* pointer = pool.insert(init);
     const Configuration* bestConfig = pointer;
     unsigned bestScore = startDist;
-    double prob = 0.5; //TODO play with E[X]
 
     initDist[pointer] = 0;
     goalDist[pointer] = startDist;
@@ -204,7 +202,7 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
         queue.pop();
 
         std::vector<Configuration> nextCfgs;
-        current->truncatedNext(nextCfgs, prob, step, bound);
+        current->simpleNext(nextCfgs, step);
 
         for (const auto& next : nextCfgs)
         {
