@@ -1,6 +1,7 @@
 #include <exception>
 #include <fstream>
 #include <tuple>
+#include <stdlib.h>
 #include "../configuration/Configuration.h"
 #include "../configuration/IO.h"
 #include "Snake_algorithms.h"
@@ -9,6 +10,14 @@ int main(int argc, char* argv[])
 {
     if (argc < 2) {
         throw std::invalid_argument("No filepath given");
+    }
+
+    double path_pref = 1;
+    double free_pref = 1;
+
+    if (argc > 3) {
+        path_pref = std::atof(argv[2]);
+        free_pref = std::atof(argv[3]);
     }
 
     std::ifstream initInput;
@@ -30,7 +39,7 @@ int main(int argc, char* argv[])
     int moduleCount = init.getIDs().size();
     int limit = 10000/moduleCount;
 
-    path = SnakeStar(init, &stat, limit);
+    path = SnakeStar(init, &stat, limit, path_pref, free_pref);
 
     std::cout << IO::toString(path[path.size()-1]);
     SpaceGrid debug(path[path.size()-1]);

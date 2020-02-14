@@ -157,7 +157,7 @@ inline std::vector<Configuration> createPath(ConfigEdges& edges, const Configura
 }
 
 
-inline std::vector<Configuration> SnakeStar(const Configuration& init, AlgorithmStat* stat = nullptr, int limit = -1)
+inline std::vector<Configuration> SnakeStar(const Configuration& init, AlgorithmStat* stat = nullptr, int limit = -1, double path_pref = 1, double free_pref = 1)
 {
     unsigned step = 90;
 
@@ -208,7 +208,7 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
         {
             const Configuration* pointerNext;
             double newEval = eval(next, grid);
-            double newDist = currDist + 1 + newEval;
+            double newDist = path_pref * (currDist + 1) + free_pref * newEval;
             bool update = false;
 
             if (newEval != 0 && newDist > worstDist && limit < queue.size() + i) {
