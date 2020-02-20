@@ -2,7 +2,9 @@
 
 #include <Configuration.h>
 #include <IO.h>
+#include "MinMaxHeap.h"
 #include "Snake_structs.h"
+#include <limits>
 #include <queue>
 #include <cmath>
 #include <memory>
@@ -47,11 +49,9 @@ using EvalPair = std::tuple<double, const Configuration*>;
 struct EvalCompare
 {
 public:
-    bool operator()(const EvalPair& a, const EvalPair& b)
+    bool operator()(const EvalPair& a, const EvalPair& b) const
     {
-        auto& [a1, _a] = a;
-        auto& [b1, _b] = b;
-        return a1 > b1;
+        return std::get<0>(a) < std::get<0>(b);
     }
 };
 
@@ -157,10 +157,10 @@ inline std::vector<Configuration> createPath(ConfigEdges& edges, const Configura
 }
 
 
-inline std::vector<Configuration> SnakeStar(const Configuration& init, AlgorithmStat* stat = nullptr, int limit = -1, double path_pref = 1, double free_pref = 1)
+inline std::vector<Configuration> SnakeStar(const Configuration& init, AlgorithmStat* stat = nullptr, int limit = 5000, double path_pref = 0.5)
 {
     unsigned step = 90;
-
+    double free_pref = 1 - path_pref;
     ConfigPred pred;
     ConfigPool pool;
 
@@ -178,7 +178,7 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
         return {init};
     }
 
-    std::priority_queue<EvalPair, std::vector<EvalPair>, EvalCompare> queue;
+    MinMaxHeap<EvalPair, EvalCompare> queue(limit);
 
     const Configuration* pointer = pool.insert(init);
     const Configuration* bestConfig = pointer;
@@ -188,18 +188,17 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
     initDist[pointer] = 0;
     goalDist[pointer] = startDist;
     pred[pointer] = pointer;
-    unsigned long maxQSize = 0;
+    int maxQSize = 0;
     int i = 0;
     queue.push( {goalDist[pointer], pointer} );
 
 
-    while (!queue.empty() && (limit < 0 || i++ < limit))
+    while (!queue.empty() && i++ < limit)
     {
 
         maxQSize = std::max(maxQSize, queue.size());
-        const auto [d, current] = queue.top();
+        const auto [d, current] = queue.popMin();
         double currDist = initDist[current];
-        queue.pop();
 
         std::vector<Configuration> nextCfgs;
         current->simpleNext(nextCfgs, step);
@@ -211,8 +210,14 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
             double newDist = path_pref * (currDist + 1) + free_pref * newEval;
             bool update = false;
 
-            if (newEval != 0 && newDist > worstDist && limit < queue.size() + i) {
-                continue;
+            if (newEval != 0 && limit <= queue.size() + i) {
+                if (newDist > worstDist) {
+                    continue;
+                }
+                worstDist = newDist;
+                if (!queue.empty()) {
+                    queue.popMax();
+                }
             }
             if (newDist > worstDist) {
                 worstDist = newDist;
@@ -266,4 +271,63 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
     }
 
     return path;
+}
+
+unsigned closestMass(const Configuration& init) {
+    Vector mass = init.massCenter();
+    unsigned bestID = 0;
+    double bestDist = std::numeric_limits<double>::max();
+    for (const auto& [id, ms] : init.getMatrices()) {
+        for (const auto& matrix : ms) {
+            double currDist = sqDistVM(matrix, mass);
+            if (currDist < bestDist) {
+                bestDist = currDist;
+                bestID = id;
+            }
+        }
+    }
+    return bestID;
+}
+
+class MakeStar
+{
+public:
+    MakeStar(const Configuration& init, unsigned root)
+    : mass(init.massCenter())
+    , dists()
+    , seen()
+    , zz_seen()
+    , module_count(int.getMatrices().size())
+    , dfs_stack() {
+        for (const auto& [id, ms] : init.getMatrices()) {
+            for (unsigned side = 0; side < 2; ++side) {
+                double currDist = sqDistVM(matrix, ms[side]);
+                dists.insert({{id,side},currDist});
+            }
+        }
+        dfs_stack.push(root);
+    }
+
+    bool empty() {
+        return dfs_stack.empty();
+    }
+
+private:
+    const Vector mass;
+    std::unordered_map<std::tuple<unsigned, unsigned>, double> dists;
+    std::unordered_set<unsigned> seen;
+    std::unordered_set<unsigned> zz_seen;
+    int module_count;
+    std::stack<unsigned> dfs_stack;
+};
+
+using chooseRootFunc = unsigned(const Configuration&);
+template<typename Next>
+inline Configuration treefy(const Configuration& init, AlgorithmStat* stat = nullptr, chooseRootFunc chooseRoot = closestMass)
+{
+    unsigned int root = chooseRoot(init);
+    Next oracle = Next(init, root);
+    while(!oracle.empty()) {
+
+    }
 }

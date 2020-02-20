@@ -584,25 +584,7 @@ public:
 
     bool collisionFree() const
     {
-        /*
-        std::vector<Vector> centers;
-        for (const auto& [id, ms] : matrices)
-        {
-            centers.push_back(center(ms[A]));
-            centers.push_back(center(ms[B]));
-        }
-        for (unsigned i = 0; i < centers.size(); ++i)
-        {
-            for (unsigned j = i + 1; j < centers.size(); ++j)
-            {
-                if (distance(centers[i], centers[j]) < 1)
-                {
-                    return false;
-                }
-            }
-        }
-        return true;
-        */
+
         for (auto it1 = matrices.begin(); it1 != matrices.end(); ++it1)
         {
             for (auto it2 = it1; it2 != matrices.end(); ++it2)
