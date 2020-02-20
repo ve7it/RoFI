@@ -494,6 +494,19 @@ public:
         return res;
     }
 
+    std::vector<Edge> getEdges(ID id, const std::unordered_set<ID>& exclude) const
+    {
+        std::vector<Edge> res;
+        for (auto& e : edges.at(id))
+        {
+            if (e.has_value() && exclude.find(e.id2()) == exclude.end())
+            {
+                res.push_back(e.value());
+            }
+        }
+        return res;
+    }
+
     // Creates new module with given ID and angles. Creates an empty set of edges corresponding to the module.
     void addModule(double alpha, double beta, double gamma, ID id)
     {
@@ -944,6 +957,10 @@ public:
     }
 
     friend ConfigurationHash;
+
+    void clearEdges() {
+        edges.clear();
+    }
 
 private:
     // Maps module ID to data about the module.

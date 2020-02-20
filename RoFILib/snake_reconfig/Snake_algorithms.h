@@ -292,42 +292,65 @@ unsigned closestMass(const Configuration& init) {
 class MakeStar
 {
 public:
-    MakeStar(const Configuration& init, unsigned root)
+    MakeStar(const Configuration& init, ID root)
     : mass(init.massCenter())
-    , dists()
-    , seen()
-    , zz_seen()
-    , module_count(int.getMatrices().size())
-    , dfs_stack() {
+    , config(init)
+    , dists() {
         for (const auto& [id, ms] : init.getMatrices()) {
+            double currDist = 0;
             for (unsigned side = 0; side < 2; ++side) {
-                double currDist = sqDistVM(matrix, ms[side]);
-                dists.insert({{id,side},currDist});
+                currDist += sqDistVM(matrix, ms[side]);
             }
+            dists.emplace(id, currDist);
         }
-        dfs_stack.push(root);
     }
 
-    bool empty() {
-        return dfs_stack.empty();
+    std::vector<Edge> operator()(std::stack<ID> dfs_stack, std::unordered_set<ID> seen, ID curr) {
+        std::vector<Edge> nEdges = config.getEdges(curr, seen);
+        std::sort(nEdges.begin(), nEdges.end(), [&](const Edge& a, const Edge& b){
+            return dists(a.id2()) < dists(b.id2());
+        });
+        for (const auto& e : nEdges) {
+            dfs_stack.push(e.id2());
+        }
+        return nEdges;
     }
 
 private:
     const Vector mass;
-    std::unordered_map<std::tuple<unsigned, unsigned>, double> dists;
-    std::unordered_set<unsigned> seen;
-    std::unordered_set<unsigned> zz_seen;
-    int module_count;
-    std::stack<unsigned> dfs_stack;
+    const Configuration& config;
+    std::unordered_map<ID, double> dists;
 };
 
-using chooseRootFunc = unsigned(const Configuration&);
-template<typename Next>
-inline Configuration treefy(const Configuration& init, AlgorithmStat* stat = nullptr, chooseRootFunc chooseRoot = closestMass)
-{
-    unsigned int root = chooseRoot(init);
-    Next oracle = Next(init, root);
-    while(!oracle.empty()) {
 
+using chooseRootFunc = ID(const Configuration&);
+
+template<typename Next>
+inline Configuration treefy (const Configuration& init, AlgorithmStat* stat = nullptr, chooseRootFunc chooseRoot = closestMass)
+{
+    ID root = chooseRoot(init);
+    Configuration treed = init;
+    treed.clearEdges();
+    
+    std::unordered_set<ID> seen{};
+    std::stack<ID> dfs_stack{};
+
+    Next oracle(init, root);
+
+    dfs_stack.push(root);
+
+    while(!dfs_stack.empty()) {
+        unsigned curr = dfs_stack.top();
+        dfs_stack.pop();
+        if (seen.find(curr) != seen.end()) {
+            continue;
+        }
+        seen.insert(curr);
+        std::vector<Edge> edges = oracle(dfs_stack, seen, curr);
+        for (const auto& e : edges) {
+            treed.addEdge(e);
+        }
     }
+
+    return treed;
 }
