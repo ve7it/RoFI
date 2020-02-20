@@ -499,7 +499,7 @@ public:
         std::vector<Edge> res;
         for (auto& e : edges.at(id))
         {
-            if (e.has_value() && exclude.find(e.id2()) == exclude.end())
+            if (e.has_value() && exclude.find(e->id2()) == exclude.end())
             {
                 res.push_back(e.value());
             }
@@ -959,7 +959,13 @@ public:
     friend ConfigurationHash;
 
     void clearEdges() {
-        edges.clear();
+        for (auto& [id, el] : edges) {
+            for (auto& opt : el) {
+                if (opt) {
+                    opt = std::nullopt;
+                }
+            }
+        }
     }
 
 private:

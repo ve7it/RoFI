@@ -8,6 +8,7 @@
 #include <queue>
 #include <cmath>
 #include <memory>
+#include <stack>
 
 struct AlgorithmStat
 {
@@ -299,16 +300,16 @@ public:
         for (const auto& [id, ms] : init.getMatrices()) {
             double currDist = 0;
             for (unsigned side = 0; side < 2; ++side) {
-                currDist += sqDistVM(matrix, ms[side]);
+                currDist += sqDistVM(ms[side], mass);
             }
             dists.emplace(id, currDist);
         }
     }
 
-    std::vector<Edge> operator()(std::stack<ID> dfs_stack, std::unordered_set<ID> seen, ID curr) {
+    std::vector<Edge> operator()(std::stack<ID>& dfs_stack, std::unordered_set<ID>& seen, ID curr) {
         std::vector<Edge> nEdges = config.getEdges(curr, seen);
         std::sort(nEdges.begin(), nEdges.end(), [&](const Edge& a, const Edge& b){
-            return dists(a.id2()) < dists(b.id2());
+            return dists[a.id2()] < dists[b.id2()];
         });
         for (const auto& e : nEdges) {
             dfs_stack.push(e.id2());
@@ -326,7 +327,7 @@ private:
 using chooseRootFunc = ID(const Configuration&);
 
 template<typename Next>
-inline Configuration treefy (const Configuration& init, AlgorithmStat* stat = nullptr, chooseRootFunc chooseRoot = closestMass)
+inline Configuration treefy(const Configuration& init, chooseRootFunc chooseRoot = closestMass)
 {
     ID root = chooseRoot(init);
     Configuration treed = init;
@@ -338,6 +339,8 @@ inline Configuration treefy (const Configuration& init, AlgorithmStat* stat = nu
     Next oracle(init, root);
 
     dfs_stack.push(root);
+
+    int counter = 0;
 
     while(!dfs_stack.empty()) {
         unsigned curr = dfs_stack.top();
