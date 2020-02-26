@@ -137,7 +137,7 @@ public:
     SequentialExecutor( int queueSize ):
         _jobs( queueSize )
     {
-        auto res = xTaskCreate( _run, "SequentialExecutor", 2048, this, 5, nullptr );
+        auto res = xTaskCreate( _run, "SequentialExecutor", 4096, this, 5, nullptr );
         if ( res != pdPASS )
             throw std::runtime_error( "Cannot allocate task" );
     }
@@ -155,7 +155,7 @@ public:
 private:
     static void _run( void* arg ) {
         auto* self = reinterpret_cast< SequentialExecutor* >( arg );
-        while ( true ) {
+        while ( true && self) {
             auto job = self->_jobs.pop();
             job();
         }
