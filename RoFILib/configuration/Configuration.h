@@ -778,6 +778,24 @@ public:
         }
     }
 
+    void generateParalyzedActions(std::vector<Action>& res, unsigned step, const std::unordered_set<unsigned>& allowed_indices) const
+    {
+        std::vector<Action::Rotate> rotations;
+        generateParalyzedRotations(rotations, step, allowed_indices);
+        std::vector<Action::Reconnect> reconnections;
+        generateReconnect(reconnections);
+
+        for (auto& rotation : rotations)
+        {
+            res.emplace_back(rotation);
+        }
+
+        for (auto& reconnection : reconnections)
+        {
+            res.emplace_back(reconnection);
+        }
+    }
+
     void generateReconnect(std::vector<Action::Reconnect>& res) const
     {
         generateConnections(res);
@@ -834,6 +852,25 @@ public:
         }
     }
 
+    void generateParalyzedRotations(std::vector<Action::Rotate>& res, unsigned step, const std::unordered_set<unsigned>& allowed_indices) const 
+    {
+        for (const auto& id : allowed_indices) {
+            auto it = modules.find(id);
+            if (it == modules.end())
+                continue;
+
+            Module mod = it->second;
+            for (int d : {-step, step})
+            {
+                for (Joint joint : {Alpha, Beta, Gamma})
+                {
+                    if (mod.rotateJoint(joint, d))
+                        res.emplace_back(id, joint, d);
+                }
+            }
+        }
+    }
+
     void generateDisconnections(std::vector<Action::Reconnect>& res) const
     {
         for (auto& [id, set] : edges)
@@ -874,6 +911,19 @@ public:
     {
         std::vector<Action> actions;
         generateSimpleActions(actions, step);
+        for (auto& action : actions)
+        {
+            auto cfgOpt = executeIfValid(action);
+            if (cfgOpt.has_value())
+            {
+                res.push_back(cfgOpt.value());
+            }
+        }
+    }
+
+    void paralyzedNext(std::vector<Configuration>& res, unsigned step, const std::unordered_set<unsigned>& allowed_indices) const {
+        std::vector<Action> actions;
+        generateParalyzedActions(actions, step, allowed_indices);
         for (auto& action : actions)
         {
             auto cfgOpt = executeIfValid(action);

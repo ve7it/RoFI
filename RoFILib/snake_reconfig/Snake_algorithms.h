@@ -357,3 +357,167 @@ inline Configuration treefy(const Configuration& init, chooseRootFunc chooseRoot
 
     return treed;
 }
+
+namespace Eval
+{
+    inline double trivial(const Configuration& conf, const Configuration& goal)
+    {
+        return 1;
+    }
+
+    inline double jointDiff(const Configuration& curr, const Configuration& goal)
+    {
+        double result = 0;
+        for ( auto& [id, mod] : curr.getModules() )
+        {
+            const Module& other = goal.getModules().at(id);
+            for (Joint j : {Alpha, Beta, Gamma})
+            {
+                double diff = mod.getJoint(j) - other.getJoint(j);
+                //result += sqrt(diff * diff);
+                result += std::abs(diff) / 90;
+            }
+        }
+        return result;
+    }
+
+    inline double centerDiff(const Configuration& curr, const Configuration& goal)
+    {
+        double result = 0;
+        for ( auto& [id, ms] : curr.getMatrices() )
+        {
+            const auto& other = goal.getMatrices().at(id);
+            for (Side s : {A, B})
+            {
+                result += distance(center(ms[s]), center(other[s]));
+            }
+        }
+        return result;
+    }
+
+    inline double matrixDiff(const Configuration& curr, const Configuration& goal)
+    {
+        double result = 0;
+        for ( auto& [id, ms] : curr.getMatrices() )
+        {
+            const auto& other = goal.getMatrices().at(id);
+            for (Side s : {A, B})
+            {
+                result += distance(ms[s], other[s]);
+            }
+        }
+        return result;
+    }
+
+    inline double actionDiff(const Configuration& curr, const Configuration& goal)
+    {
+        Action action = curr.diff(goal);
+        return action.rotations().size() + action.reconnections().size() ;
+    }
+}
+
+namespace Distance
+{
+    inline double reconnections(const Configuration& curr, const Configuration& goal)
+    {
+        auto diff = curr.diff(goal);
+        return diff.reconnections().size();
+    }
+
+    inline double rotations(const Configuration& curr, const Configuration& goal)
+    {
+        auto diff = curr.diff(goal);
+        return diff.rotations().size();
+    }
+
+    inline double diff(const Configuration& curr, const Configuration& goal)
+    {
+        return reconnections(curr, goal) * 1000 + rotations(curr, goal);
+    }
+}
+
+inline std::vector<Configuration> paralyzedAStar(const Configuration& init, const Configuration& goal, EvalFunction& eval = Eval::trivial, AlgorithmStat* stat = nullptr, std::unordered_set<unsigned> allowed_indices = {})
+{
+    ConfigPred pred;
+    ConfigPool pool;
+    unsigned step = 90;
+
+    // Already computed shortest distance from init to configuration.
+    ConfigValue initDist;
+
+    // Shortest distance from init through this configuration to goal.
+    ConfigValue goalDist;
+
+    if (init == goal)
+    {
+        return {init};
+    }
+
+    std::priority_queue<EvalPair, std::vector<EvalPair>, EvalCompare> queue;
+
+    const Configuration* pointer = pool.insert(init);
+    initDist[pointer] = 0;
+    goalDist[pointer] = eval(init, goal);
+    pred[pointer] = pointer;
+    unsigned long maxQSize = 0;
+
+    queue.push( {goalDist[pointer], pointer} );
+
+    while (!queue.empty())
+    {
+
+        maxQSize = std::max(maxQSize, queue.size());
+        const auto [d, current] = queue.top();
+        double currDist = initDist[current];
+        queue.pop();
+
+
+        std::vector<Configuration> nextCfgs;
+        current->paralyzedNext(nextCfgs, step, allowed_indices);
+        for (const auto& next : nextCfgs)
+        {
+            const Configuration* pointerNext;
+            double newDist = currDist + 1 + eval(next, goal);
+            bool update = false;
+
+            if (!pool.find(next))
+            {
+                pointerNext = pool.insert(next);
+                initDist[pointerNext] = currDist + 1;
+                update = true;
+            }
+            else
+            {
+                pointerNext = pool.get(next);
+            }
+
+            if ((currDist + 1 < initDist[pointerNext]) || update)
+            {
+                initDist[pointerNext] = currDist + 1;
+                goalDist[pointerNext] = newDist;
+                pred[pointerNext] = current;
+                queue.push({newDist, pointerNext});
+            }
+
+            if (next == goal)
+            {
+                auto path = createPath(pred, pointerNext);
+                if (stat != nullptr)
+                {
+                    stat->pathLength = path.size();
+                    stat->queueSize = maxQSize;
+                    stat->seenCfgs = pool.size();
+                }
+
+                return path;
+            }
+        }
+    }
+    if (stat != nullptr)
+    {
+        stat->pathLength = 0;
+        stat->queueSize = maxQSize;
+        stat->seenCfgs = pool.size();
+    }
+    return {};
+}
