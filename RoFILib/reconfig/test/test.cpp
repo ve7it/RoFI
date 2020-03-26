@@ -97,7 +97,7 @@ TEST_CASE("Generate all rotations without repetitions")
     rots.push_back({1,Beta,90});
 
     std::vector<Rots> res;
-    getAllRots(rots, res, 3);
+    getAllSubsets(rots, res, 3);
 
 
     REQUIRE(res.size() == 2 + 4 + 1 + 5);

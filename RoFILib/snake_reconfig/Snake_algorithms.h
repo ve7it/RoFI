@@ -274,9 +274,9 @@ inline std::vector<Configuration> SnakeStar(const Configuration& init, Algorithm
     return path;
 }
 
-unsigned closestMass(const Configuration& init) {
+ID closestMass(const Configuration& init) {
     Vector mass = init.massCenter();
-    unsigned bestID = 0;
+    ID bestID = 0;
     double bestDist = std::numeric_limits<double>::max();
     for (const auto& [id, ms] : init.getMatrices()) {
         for (const auto& matrix : ms) {
@@ -343,7 +343,7 @@ inline Configuration treefy(const Configuration& init, chooseRootFunc chooseRoot
     int counter = 0;
 
     while(!dfs_stack.empty()) {
-        unsigned curr = dfs_stack.top();
+        ID curr = dfs_stack.top();
         dfs_stack.pop();
         if (seen.find(curr) != seen.end()) {
             continue;
@@ -387,7 +387,7 @@ namespace Eval
         for ( auto& [id, ms] : curr.getMatrices() )
         {
             const auto& other = goal.getMatrices().at(id);
-            for (Side s : {A, B})
+            for (ShoeId s : {ShoeId::A, ShoeId::B})
             {
                 result += distance(center(ms[s]), center(other[s]));
             }
@@ -401,7 +401,7 @@ namespace Eval
         for ( auto& [id, ms] : curr.getMatrices() )
         {
             const auto& other = goal.getMatrices().at(id);
-            for (Side s : {A, B})
+            for (ShoeId s : {ShoeId::A, ShoeId::B})
             {
                 result += distance(ms[s], other[s]);
             }
